@@ -2,8 +2,19 @@ import java.util.Scanner;
 
 public class Main {
     public static void main(String [] args) {
-        System.out.println(("Введите текст и нажмите <Enter>:"));
-        String text = new Scanner(System.in).nextLine();
-        System.out.println("Длина текста: " + text.length());
+        System.out.println("Введите число:");
+        Scanner number = new Scanner(System.in);
+
+        int firstNumber= number.nextInt();
+        int secondNumber= number.nextInt();
+
+        int quotient = firstNumber + secondNumber;
+        System.out.println(quotient);
+        quotient = firstNumber - secondNumber;
+        System.out.println(quotient);
+        quotient = firstNumber * secondNumber;
+        System.out.println(quotient);
+        quotient = firstNumber % secondNumber;
+        System.out.println((double)quotient);
     }
 }
