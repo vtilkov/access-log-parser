@@ -68,6 +68,9 @@ public class Main {
         }
 
         int totalLines = 0;
+
+        Statistics statistics = new Statistics();
+
         /*int maxLength = 0;
         int minLength = Integer.MAX_VALUE;*/
 
@@ -80,7 +83,7 @@ public class Main {
                int length = line.length();
             }*/
         try (FileReader fileReader = new FileReader(fileName);
-             BufferedReader reader = new BufferedReader(fileReader)) {
+        BufferedReader reader = new BufferedReader(fileReader)) {
 
             String line;
             while ((line = reader.readLine()) != null) {
@@ -95,13 +98,29 @@ public class Main {
                     );
                 }
 
-                //обработка User-Agent для поиска ботов
-                processUserAgent(line);
+                //создадим объект LogEntry и добавим в статистику
+                try {
+                    LogEntry entry = new LogEntry(line);
+                    statistics.addEntry(entry);
+                    processUserAgent(entry.getUserAgent());
+
+                    // Для отладки - выводим первые несколько записей
+                    if (totalLines <= 5) {
+                        System.out.println("Обработана строка " + totalLines + ": " + entry);
+                    }
+
+                } catch (Exception e) {
+                    // Пропускаем некорректные строки
+                    System.out.println("Ошибка при обработке строки " + totalLines + ": " + e.getMessage());
+                    System.out.println("Проблемная строка: " + line);
+                }
             }
 
             //вычислим доли запросов от ботов
-            double googlebotShare = totalLines > 0 ? (double) googlebotCount / totalLines * 100 : 0;
-            double yandexbotShare = totalLines > 0 ? (double) yandexbotCount / totalLines * 100 : 0;
+            double googlebotShare = statistics.getEntryCount() > 0 ?
+                    (double) googlebotCount / statistics.getEntryCount() * 100 : 0;
+            double yandexbotShare = statistics.getEntryCount() > 0 ?
+                    (double) yandexbotCount / statistics.getEntryCount() * 100 : 0;
 
             //Выведем результат анализа файла
             /*Допишите самостоятельно код
@@ -113,10 +132,17 @@ public class Main {
                 длину самой короткой строки в файле*/
             System.out.println("\nРезультаты анализа файла:");
             System.out.println("Общее количество строк: " + totalLines);
+            System.out.println("Успешно обработано записей: " + statistics.getEntryCount());
             System.out.println("Количество запросов от Googlebot: " + googlebotCount);
             System.out.println("Количество запросов от YandexBot: " + yandexbotCount);
             System.out.printf("Доля запросов от Googlebot: %.2f%%\n", googlebotShare);
             System.out.printf("Доля запросов от YandexBot: %.2f%%\n", yandexbotShare);
+
+            //выыедем cтатистику трафика
+            System.out.printf("Средний объем трафика за час: %.2f байт/час\n", statistics.getTrafficRate());
+            System.out.println("Общий объем трафика: " + statistics.getTotalTraffic() + " байт");
+            System.out.println("Период анализа: с " + statistics.getMinTime() + " по " + statistics.getMaxTime());
+
 
         } catch (LineTooLongException e) {
             System.out.println("Ошибка: " + e.getMessage());
@@ -140,10 +166,12 @@ public class Main {
             разделять каждую строку на составляющие. Описание составляющих находится во введении ко всем
             заданиям (раздел “Файл состоит из строк следующего вида”).
             Мда.. самое вкусное ))*/
-        private static void processUserAgent(String logLine){
-            try {
+        private static void processUserAgent(UserAgent userAgent){
+
+            String browser = userAgent.getBrowserType();
+            /*try {
                 //разделим строку на составляющие по кавычкам
-                /*Формат:
+                Формат:
                     В этих строках содержатся следующие компоненты:
                     IP-адрес клиента, который сделал запрос к серверу (в примере выше — 37.231.123.209).
                     Два пропущенных свойства, на месте которых обычно стоят дефисы, но могут встречаться также и пустые строки ("").
@@ -153,7 +181,7 @@ public class Main {
                     Размер отданных данных в байтах (в примере выше — 61096).
                     Путь к странице, с которой перешли на текущую страницу, — referer (в примере выше — “https://nova-news.ru/search/?rss=1&lg=1”).
                     User-Agent — информация о браузере или другом клиенте, который выполнил запрос.
-                    */
+
                 String[] parts = logLine.split("\"");
 
                 //User-Agent находится в последней части после разделения по кавычкам
@@ -184,15 +212,15 @@ public class Main {
                     String programName = (slashIndex != -1) ?
                             fragment.substring(0, slashIndex).trim() : fragment.trim();
 
-                    //Сравниваем с названиями ботов используя equals()
-                    if ("Googlebot".equals(programName)) {
+                    //Сравниваем с названиями ботов используя equals()*/
+                    if ("Googlebot".equals(browser)) {
                         googlebotCount++;
-                    } else if ("YandexBot".equals(programName)) {
+                    } else if ("YandexBot".equals(browser)) {
                         yandexbotCount++;
-                    }
+                    }/*
                 }
             } catch (Exception e) {
                 //игнорим ошибки парсинга для отдельных строк
-            }
+            }*/
     }
 }
