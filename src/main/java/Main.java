@@ -12,6 +12,10 @@ class LineTooLongException extends RuntimeException {
 }
 
 public class Main {
+    //переменные для подсчета ботов
+    private static int googlebotCount = 0;
+    private static int yandexbotCount = 0;
+
     public static void main(String [] args) {
         System.out.println("Введите число:");
         Scanner scanner = new Scanner(System.in);
@@ -64,8 +68,8 @@ public class Main {
         }
 
         int totalLines = 0;
-        int maxLength = 0;
-        int minLength = Integer.MAX_VALUE;
+        /*int maxLength = 0;
+        int minLength = Integer.MAX_VALUE;*/
 
         /*напишите код, который будет построчно читать указанный файл:
             FileReader fileReader = new FileReader(path);
@@ -83,29 +87,21 @@ public class Main {
                 int length = line.length();
                 totalLines++;
 
-                //максимальная длина строки
-                if (length > maxLength) {
-                    maxLength = length;
-                }
-
-                //минимальная длина строки
-                if (length < minLength) {
-                    minLength = length;
-                }
-
-                //на привышение длины символов 1024
+                //проверим на превышение длины символов 1024
                 if (length > 1024) {
                     throw new LineTooLongException(
                             "Обнаружена строка длиной " + length + " символов в строке " +
-                                    totalLines + ". Максимально допустимая длина: 1024 символа(т.ч.к.)"
+                                    totalLines + ". Максимально допустимая длина: 1024 символа"
                     );
                 }
+
+                //обработка User-Agent для поиска ботов
+                processUserAgent(line);
             }
 
-            //файл пусто, тогда устанавливаем minLength в 0
-            if (totalLines == 0) {
-                minLength = 0;
-            }
+            //вычислим доли запросов от ботов
+            double googlebotShare = totalLines > 0 ? (double) googlebotCount / totalLines * 100 : 0;
+            double yandexbotShare = totalLines > 0 ? (double) yandexbotCount / totalLines * 100 : 0;
 
             //Выведем результат анализа файла
             /*Допишите самостоятельно код
@@ -117,8 +113,10 @@ public class Main {
                 длину самой короткой строки в файле*/
             System.out.println("\nРезультаты анализа файла:");
             System.out.println("Общее количество строк: " + totalLines);
-            System.out.println("Длина самой длинной строки: " + maxLength);
-            System.out.println("Длина самой короткой строки: " + minLength);
+            System.out.println("Количество запросов от Googlebot: " + googlebotCount);
+            System.out.println("Количество запросов от YandexBot: " + yandexbotCount);
+            System.out.printf("Доля запросов от Googlebot: %.2f%%\n", googlebotShare);
+            System.out.printf("Доля запросов от YandexBot: %.2f%%\n", yandexbotShare);
 
         } catch (LineTooLongException e) {
             System.out.println("Ошибка: " + e.getMessage());
@@ -136,5 +134,65 @@ public class Main {
         } catch (Exception ex) {
             ex.printStackTrace();
         }
+    }
+
+        /*Напишите код, который будет
+            разделять каждую строку на составляющие. Описание составляющих находится во введении ко всем
+            заданиям (раздел “Файл состоит из строк следующего вида”).
+            Мда.. самое вкусное ))*/
+        private static void processUserAgent(String logLine){
+            try {
+                //разделим строку на составляющие по кавычкам
+                /*Формат:
+                    В этих строках содержатся следующие компоненты:
+                    IP-адрес клиента, который сделал запрос к серверу (в примере выше — 37.231.123.209).
+                    Два пропущенных свойства, на месте которых обычно стоят дефисы, но могут встречаться также и пустые строки ("").
+                    Дата и время запроса в квадратных скобках.
+                    Метод запроса (в примере выше — GET) и путь, по которому сделан запрос.
+                    Код HTTP-ответа (в примере выше — 200).
+                    Размер отданных данных в байтах (в примере выше — 61096).
+                    Путь к странице, с которой перешли на текущую страницу, — referer (в примере выше — “https://nova-news.ru/search/?rss=1&lg=1”).
+                    User-Agent — информация о браузере или другом клиенте, который выполнил запрос.
+                    */
+                String[] parts = logLine.split("\"");
+
+                //User-Agent находится в последней части после разделения по кавычкам
+                if (parts.length < 6) {
+                    return; //принудительно вышли, неправильный формат строки
+                }
+
+                String userAgent = parts[5]; //Индекс 5 соответствует User-Agent
+
+                //Ищем первые скобки в User-Agent
+                int bracketsStart = userAgent.indexOf('(');
+                int bracketsEnd = userAgent.indexOf(')', bracketsStart);
+                if (bracketsStart == -1 || bracketsEnd == -1) {
+                    return;
+                }
+
+                //Выделяем часть, которая находится в первых скобках
+                String firstBrackets = userAgent.substring(bracketsStart + 1, bracketsEnd);
+
+                //Разделяем эту часть по точке с запятой
+                String[] bracketParts = firstBrackets.split(";");
+                if (bracketParts.length >= 2) {
+                    //Берем второй фрагмент и очищаем от пробелов
+                    String fragment = bracketParts[1].trim();
+
+                    //Отделяем часть до слэша
+                    int slashIndex = fragment.indexOf('/');
+                    String programName = (slashIndex != -1) ?
+                            fragment.substring(0, slashIndex).trim() : fragment.trim();
+
+                    //Сравниваем с названиями ботов используя equals()
+                    if ("Googlebot".equals(programName)) {
+                        googlebotCount++;
+                    } else if ("YandexBot".equals(programName)) {
+                        yandexbotCount++;
+                    }
+                }
+            } catch (Exception e) {
+                //игнорим ошибки парсинга для отдельных строк
+            }
     }
 }
