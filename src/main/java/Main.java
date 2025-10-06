@@ -1,3 +1,6 @@
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
 import java.util.Scanner;
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -143,6 +146,27 @@ public class Main {
             System.out.println("Общий объем трафика: " + statistics.getTotalTraffic() + " байт");
             System.out.println("Период анализа: с " + statistics.getMinTime() + " по " + statistics.getMaxTime());
 
+            System.out.println("\nВывод новой статистики по Курсовой проект. Задание #1 по теме Collections:");
+            System.out.println("\n-- СПИСОК всех страниц --");
+            HashSet<String> pages = statistics.getExistingPages();
+            System.out.println("Список всех существующих страниц сайта: " + pages.size());
+            /*System.out.println("Список страниц: ");
+            for (String page : pages) {
+                System.out.println("  - " + page);
+            }*/
+
+            System.out.println("\n -- ВОЗВРАЩАТЬ статистику операционных систем пользователей сайта --");
+            HashMap<String, Double> osStats = statistics.getOsStatistics();
+            HashMap<String, Integer> rawOsData = statistics.getRawOsData();
+
+            System.out.println("Распределение по операционным системам:");
+            for (Map.Entry<String, Double> entry : osStats.entrySet()) {
+                String os = entry.getKey();
+                double share = entry.getValue();
+                int count = rawOsData.get(os);
+                System.out.printf("  %s: %d запросов (%.2f%%)\n",
+                        os, count, share * 100);
+            }
 
         } catch (LineTooLongException e) {
             System.out.println("Ошибка: " + e.getMessage());
