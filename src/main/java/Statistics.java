@@ -3,6 +3,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /* Создайте класс для расчётов
 статистики — Statistics. У этого класса должен быть конструктор без параметров,
@@ -32,6 +33,10 @@ class Statistics {
     private HashSet<String> existingPages;
     private HashMap<String, Integer> osCount;
 
+    // новые поля для Задание #2 по теме "Collections"
+    private HashSet<String> notFoundPages;
+    private HashMap<String, Integer> browserCount;
+
     public Statistics() {
         this.totalTraffic = 0;
         this.minTime = null;
@@ -39,6 +44,8 @@ class Statistics {
         this.entryCount = 0;
         this.existingPages = new HashSet<>();
         this.osCount = new HashMap<>();
+        this.notFoundPages = new HashSet<>();
+        this.browserCount = new HashMap<>();
     }
 
     public void addEntry(LogEntry entry) {
@@ -67,6 +74,14 @@ class Statistics {
         //частоту встречаемости каждой операционной системы.
         String os = entry.getUserAgent().getOsType();
         osCount.put(os, osCount.getOrDefault(os, 0) + 1);
+
+        // Задание #2 по теме "Collections"
+        if (entry.getResponseCode() == 404) { // страница не существует 404
+            notFoundPages.add(entry.getPath());
+        }
+
+        String browser = entry.getUserAgent().getBrowserType();
+        browserCount.put(browser, browserCount.getOrDefault(browser, 0) + 1); // подсчитаем браузеры
     }
 
     public double getTrafficRate() {
@@ -124,6 +139,60 @@ class Statistics {
             total += count;
         }
         return total;
+    }
+
+    // НОВЫЕ МЕТОДЫ ДЛЯ ЗАДАНИЯ #2
+    // Возвращает список всех несуществующих страниц сайта (с кодом ответа 404)
+    public HashSet<String> getNotFoundPages() {
+        return notFoundPages;
+    }
+
+    // Возвращает статистику браузеров в виде долей (от 0 до 1)
+    public HashMap<String, Double> getBrowserStatistics() {
+        HashMap<String, Double> browserStatistics = new HashMap<>();
+
+        // Вычисляем общее количество записей браузеров
+        int totalBrowsers = getTotalBrowserCount();
+
+        if (totalBrowsers > 0) {
+            // Рассчитываем долю для каждого браузера
+            for (Map.Entry<String, Integer> entry : browserCount.entrySet()) {
+                String browser = entry.getKey();
+                int count = entry.getValue();
+                double share = (double) count / totalBrowsers;
+                browserStatistics.put(browser, share);
+            }
+        }
+
+        return browserStatistics;
+    }
+
+    // Вспомогательный метод для получения общего количества браузеров
+    private int getTotalBrowserCount() {
+        int total = 0;
+        for (int count : browserCount.values()) {
+            total += count;
+        }
+        return total;
+    }
+
+    // Дополнительный метод для отладки - выводит сырые данные по браузерам
+    public HashMap<String, Integer> getRawBrowserData() {
+        return new HashMap<>(browserCount);
+    }
+
+    // Дополнительный метод: получает количество 404 ошибок
+    public int getNotFoundPagesCount() {
+        return notFoundPages.size();
+    }
+
+    // Дополнительный метод: получает самые популярные браузеры
+    public java.util.List<String> getTopBrowsers(int limit) {
+        return browserCount.entrySet().stream()
+                .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
+                .limit(limit)
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toList());
     }
 
     public HashMap<String, Integer> getRawOsData() {

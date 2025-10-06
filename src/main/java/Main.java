@@ -168,6 +168,36 @@ public class Main {
                         os, count, share * 100);
             }
 
+            // Задание #2 по теме "Collections"
+            // несуществующа страница 404 - статистика
+            System.out.println("\nКурсовой проект. Задание #2 по теме Collections :");
+            System.out.println("\n -- Несуществующих страницы сайта 404 --");
+            HashSet<String> notFoundPages = statistics.getNotFoundPages();
+            System.out.println("Количество несуществующих страниц: " + notFoundPages.size());
+            /*
+            if (!notFoundPages.isEmpty()) {
+                System.out.println("Список несуществующих страниц:");
+                for (String page : notFoundPages) {
+                    System.out.println("  - " + page);
+                }
+            } else {
+                System.out.println("Несуществующие страницы не обнаружены");
+            }*/
+
+            // 2. Статистика браузеров пользователей сайта
+            System.out.println("\n -- Статистика браузеров --");
+            HashMap<String, Double> browserStats = statistics.getBrowserStatistics();
+            HashMap<String, Integer> rawBrowserData = statistics.getRawBrowserData();
+
+            System.out.println("Распределение по браузерам: ");
+            for (Map.Entry<String, Double> entry : browserStats.entrySet()) {
+                String browser = entry.getKey();
+                double share = entry.getValue();
+                int count = rawBrowserData.get(browser);
+                System.out.printf("  %s: %d запросов (%.2f%%)\n",
+                        browser, count, share * 100);
+            }
+
         } catch (LineTooLongException e) {
             System.out.println("Ошибка: " + e.getMessage());
             System.out.println("Анализ файла прерван из-за слишком длинной строки. ");
