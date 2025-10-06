@@ -1,5 +1,8 @@
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
 
 /* Создайте класс для расчётов
 статистики — Statistics. У этого класса должен быть конструктор без параметров,
@@ -25,11 +28,17 @@ class Statistics {
     private LocalDateTime maxTime;
     private int entryCount;
 
+    // поля для HashSet / HashMap
+    private HashSet<String> existingPages;
+    private HashMap<String, Integer> osCount;
+
     public Statistics() {
         this.totalTraffic = 0;
         this.minTime = null;
         this.maxTime = null;
         this.entryCount = 0;
+        this.existingPages = new HashSet<>();
+        this.osCount = new HashMap<>();
     }
 
     public void addEntry(LogEntry entry) {
@@ -45,6 +54,19 @@ class Statistics {
         if (maxTime == null || entryTime.isAfter(maxTime)) {
             maxTime = entryTime;
         }
+
+        // Для этого создайте в классе переменную класса HashSet<String>. В
+        //эту переменную при выполнении метода addEntry добавляйте адреса существующих
+        //страниц (с кодом ответа 200) сайта.
+        if (entry.getResponseCode() == 200) {
+            existingPages.add(entry.getPath());
+        }
+
+        // Для этого создайте в классе
+        //переменную класса HashMap<String, Integer>, в которой подсчитывайте
+        //частоту встречаемости каждой операционной системы.
+        String os = entry.getUserAgent().getOsType();
+        osCount.put(os, osCount.getOrDefault(os, 0) + 1);
     }
 
     public double getTrafficRate() {
@@ -67,4 +89,44 @@ class Statistics {
     public LocalDateTime getMinTime() { return minTime; }
     public LocalDateTime getMaxTime() { return maxTime; }
     public int getEntryCount() { return entryCount; }
+
+    // Возвращает список всех существующих страниц сайта (с кодом ответа 200)
+    public HashSet<String> getExistingPages() {
+        return existingPages;
+    }
+
+    // Метод в результате должен создавать новый HashMap<String, Double>
+    // и в качестве ключей рассчитывать долю для каждой операционной системы (от 0 до 1).
+    // Чтобы рассчитать долю конкретной операционной системы, нужно разделить количество
+    // конкретной операционной системы на общее количество для всех операционных систем.
+    public HashMap<String, Double> getOsStatistics() {
+        HashMap<String, Double> osStatistics = new HashMap<>();
+
+        // Вычисляем общее количество записей
+        int totalEntries = getTotalOsCount();
+
+        if (totalEntries > 0) {
+            // Рассчитываем долю для каждой ОС
+            for (Map.Entry<String, Integer> entry : osCount.entrySet()) {
+                String os = entry.getKey();
+                int count = entry.getValue();
+                double share = (double) count / totalEntries;
+                osStatistics.put(os, share);
+            }
+        }
+        return osStatistics;
+    }
+
+    // Вспомогательный метод для получения общего количества записей ОС
+    private int getTotalOsCount() {
+        int total = 0;
+        for (int count : osCount.values()) {
+            total += count;
+        }
+        return total;
+    }
+
+    public HashMap<String, Integer> getRawOsData() {
+        return new HashMap<>(osCount);
+    }
 }
