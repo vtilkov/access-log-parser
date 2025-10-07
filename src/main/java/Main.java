@@ -199,7 +199,10 @@ public class Main {
             }
 
             System.out.println("\nКурсовой проект. Задание #1 по теме Stream API");
+            //Вывод новой статистики
+            statistics.printStreamAPIStatistics();
 
+            System.out.println("\nКурсовой проект. Задание #2 по теме Stream API");
             //Вывод новой статистики
             statistics.printStreamAPIStatistics();
 
