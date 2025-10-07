@@ -37,6 +37,11 @@ class Statistics {
     private HashSet<String> notFoundPages;
     private HashMap<String, Integer> browserCount;
 
+    //новые поля по теме StreamApi
+    private HashSet<String> uniqueUserIPs;
+    private int userVisitsCount;
+    private int errorRequestsCount;
+
     public Statistics() {
         this.totalTraffic = 0;
         this.minTime = null;
@@ -46,6 +51,11 @@ class Statistics {
         this.osCount = new HashMap<>();
         this.notFoundPages = new HashSet<>();
         this.browserCount = new HashMap<>();
+
+        //инициализирем поля по теме StreamApi
+        this.uniqueUserIPs = new HashSet<>();
+        this.userVisitsCount = 0;
+        this.errorRequestsCount = 0;
     }
 
     public void addEntry(LogEntry entry) {
@@ -82,6 +92,30 @@ class Statistics {
 
         String browser = entry.getUserAgent().getBrowserType();
         browserCount.put(browser, browserCount.getOrDefault(browser, 0) + 1); // подсчитаем браузеры
+
+        // StreamApi
+        boolean isBot = isBot(entry.getUserAgent()); //проверить пользователь бот ?
+        // если нет, то зачем его в статистику реальных пользователей
+        if (!isBot) {userVisitsCount++;
+            uniqueUserIPs.add(entry.getIpAddress());}
+
+        //иначе ведем посчет ошибочных запросов (400/500)
+        if (isErrorResponse(entry.getResponseCode())){
+            errorRequestsCount++;
+        }
+    }
+
+    private boolean isBot(UserAgent userAgent){
+        String browser = userAgent.getBrowserType().toLowerCase();
+        return browser.contains("bot") ||
+                browser.equals("googlebot") ||
+                browser.equals("yandexbot") ||
+                browser.equals("bingbot");
+    }
+
+    //определим ошибочный ответ
+    private boolean isErrorResponse(int responseCode) {
+        return (responseCode >= 400 && responseCode < 600);
     }
 
     public double getTrafficRate() {
@@ -97,6 +131,56 @@ class Statistics {
 
         // Возвращаем средний объем трафика в час
         return (double) totalTraffic / hoursBetween;
+    }
+
+    //StreamApi
+    //подсчет среднего количества почещений за час (реальные пользователи)
+    public double getAverageVisitsPerHour() {
+        if (minTime == null || maxTime == null || userVisitsCount == 0) {
+            return 0.0;
+        }
+
+        long hoursBetween = ChronoUnit.HOURS.between(minTime,maxTime);
+        if (hoursBetween == 0 ) {
+            return userVisitsCount;
+        }
+
+        return (double) userVisitsCount/hoursBetween;
+    }
+
+    //подсчет среднего количества ошибочных запросов в час
+    public double getAverageErrorRequestsPerHour() {
+        if (minTime == null || maxTime == null || errorRequestsCount == 0) {
+            return 0.0;
+        }
+
+        long hoursBetween = ChronoUnit.HOURS.between(minTime, maxTime);
+        if (hoursBetween == 0) {
+            return errorRequestsCount;
+        }
+
+        return (double) errorRequestsCount / hoursBetween;
+    }
+
+    //средняя посещаемость одним пользователем
+    public double getAverageVisitsPerUser() {
+        if (uniqueUserIPs.isEmpty() || userVisitsCount == 0) {
+            return 0.0;
+        }
+
+        return (double) userVisitsCount / uniqueUserIPs.size();
+    }
+
+    //доп метод получения статистики с использованием StreamApi
+    public void printStreamAPIStatistics() {
+        System.out.println("\n --СТАТИСТИКА (StreamApi) --");
+
+        System.out.printf("Среднее количество посещений в час (люди): %.2f\n",
+                getAverageVisitsPerHour());
+        System.out.printf("Среднее количество ошибочных запросов в час: %.2f\n",
+                getAverageErrorRequestsPerHour());
+        System.out.printf("Средняя посещаемость одним пользователем: %.2f\n",
+                getAverageVisitsPerUser());
     }
 
     // Дополнительные геттеры для статистики
