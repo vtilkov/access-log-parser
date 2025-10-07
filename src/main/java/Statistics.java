@@ -2,6 +2,7 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -37,10 +38,15 @@ class Statistics {
     private HashSet<String> notFoundPages;
     private HashMap<String, Integer> browserCount;
 
-    //новые поля по теме StreamApi
+    //новые поля по теме StreamApi задание 1
     private HashSet<String> uniqueUserIPs;
     private int userVisitsCount;
     private int errorRequestsCount;
+
+    //новые поля по теме StreamApi задание 2
+    private HashMap<Long, Integer> visitsPerSecond; // для пиковой посещаемости
+    private HashSet<String> referringDomains; // для списка ссылающихся сайтов
+    private HashMap<String, Integer> userVisitCounts; // для подсчета посещений по пользователям
 
     public Statistics() {
         this.totalTraffic = 0;
@@ -52,10 +58,15 @@ class Statistics {
         this.notFoundPages = new HashSet<>();
         this.browserCount = new HashMap<>();
 
-        //инициализирем поля по теме StreamApi
+        //инициализирем поля по теме StreamApi задание 1
         this.uniqueUserIPs = new HashSet<>();
         this.userVisitsCount = 0;
         this.errorRequestsCount = 0;
+
+        //инициализирем поля по теме StreamApi задание 2
+        this.visitsPerSecond = new HashMap<>();
+        this.referringDomains = new HashSet<>();
+        this.userVisitCounts = new HashMap<>();
     }
 
     public void addEntry(LogEntry entry) {
@@ -99,7 +110,25 @@ class Statistics {
         if (!isBot) {userVisitsCount++;
             uniqueUserIPs.add(entry.getIpAddress());}
 
-        //иначе ведем посчет ошибочных запросов (400/500)
+        //логика для задания 2 StreamApi
+        // Подсчет посещений по секундам для пиковой посещаемости
+        long secondTimestamp = entryTime.toEpochSecond(java.time.ZoneOffset.UTC);
+        visitsPerSecond.put(secondTimestamp, visitsPerSecond.getOrDefault(secondTimestamp, 0) + 1);
+
+        // Сбор доменов из referer
+        if (entry.getReferer() != null && !entry.getReferer().isEmpty() &&
+                !entry.getReferer().equals("-")) {
+            String domain = extractDomain(entry.getReferer());
+            if (domain != null && !domain.isEmpty()) {
+                referringDomains.add(domain);
+            }
+        }
+
+        // Подсчет посещений по пользователям (ip)
+        userVisitCounts.put(entry.getIpAddress(),
+                userVisitCounts.getOrDefault(entry.getIpAddress(), 0) + 1);
+
+        // Подсчет ошибочных запросов (400/500)
         if (isErrorResponse(entry.getResponseCode())){
             errorRequestsCount++;
         }
@@ -116,6 +145,36 @@ class Statistics {
     //определим ошибочный ответ
     private boolean isErrorResponse(int responseCode) {
         return (responseCode >= 400 && responseCode < 600);
+    }
+
+    // Метод для извлечения домена из referer
+    // Метод, возвращающий список
+    // сайтов, со страниц которых есть ссылки на текущий сайт.
+    // Для получения данного списка собирайте домены для всех referer-ов в HashSet<String>.
+    // Причём, важно собирать именно адреса доменов. К примеру, для referer: https://nova-news.ru/wp-login.php,
+    // доменное имя будет: nova-news.ru
+    private String extractDomain(String referer) {
+        try {
+            // Убираем протокол
+            String domain = referer.replaceFirst("^(https?://)?(www\\.)?", "");
+
+            // Убираем путь после домена
+            int slashIndex = domain.indexOf('/');
+            if (slashIndex > 0) {
+                domain = domain.substring(0, slashIndex);
+            }
+
+            // Убираем порт если есть
+            int colonIndex = domain.indexOf(':');
+            if (colonIndex > 0) {
+                domain = domain.substring(0, colonIndex);
+            }
+
+            return domain.trim();
+        } catch (Exception e) {
+            System.out.println("Ошибка при извлечении домена из: " + referer);
+            return "";
+        }
     }
 
     public double getTrafficRate() {
@@ -171,9 +230,81 @@ class Statistics {
         return (double) userVisitsCount / uniqueUserIPs.size();
     }
 
+    // Методы для задания 2 StreamApi
+    // 1. Метод расчёта пиковой посещаемости сайта (в секунду)
+    // Возвращает максимальное количество посещений за одну секунду
+    public int getPeakVisitsPerSecond() {
+        if (visitsPerSecond.isEmpty()) {
+            return 0;
+        }
+
+        // Используем Stream API для нахождения максимального значения
+        return visitsPerSecond.values().stream()
+                .mapToInt(Integer::intValue)
+                .max()
+                .orElse(0);
+    }
+
+    //1.1 Дополнительный метод: получение детальной информации о пиковой секунде
+    public Map.Entry<Long, Integer> getPeakSecondInfo() {
+        if (visitsPerSecond.isEmpty()) {
+            return null;
+        }
+
+        return visitsPerSecond.entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .orElse(null);
+    }
+
+    //2. Метод, возвращающий список сайтов, со страниц которых есть ссылки на текущий сайт
+    // Возвращает отсортированный список доменов
+    public List<String> getReferringDomains() {
+        return referringDomains.stream()
+                .sorted()
+                .collect(Collectors.toList());
+    }
+
+    //2.1 Дополнительный метод: получение количества ссылающихся доменов
+    public int getReferringDomainsCount() {
+        return referringDomains.size();
+    }
+
+    //Метод расчёта максимальной посещаемости одним пользователем
+    // Возвращает максимальное количество посещений для одного пользователя (IP)
+    public int getMaxVisitsBySingleUser() {
+        if (userVisitCounts.isEmpty()) {
+            return 0;
+        }
+
+        // Используем Stream API для нахождения максимального значения
+        return userVisitCounts.values().stream()
+                .mapToInt(Integer::intValue)
+                .max()
+                .orElse(0);
+    }
+
+    //3.1 Дополнительный метод: получение информации о самом активном пользователе
+    public Map.Entry<String, Integer> getMostActiveUserInfo() {
+        if (userVisitCounts.isEmpty()) {
+            return null;
+        }
+
+        return userVisitCounts.entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .orElse(null);
+    }
+
+    //3.2 Дополнительный метод: топ N самых активных пользователей
+    public List<Map.Entry<String, Integer>> getTopActiveUsers(int limit) {
+        return userVisitCounts.entrySet().stream()
+                .sorted(Map.Entry.<String, Integer>comparingByValue().reversed())
+                .limit(limit)
+                .collect(Collectors.toList());
+    }
+
     //доп метод получения статистики с использованием StreamApi
     public void printStreamAPIStatistics() {
-        System.out.println("\n --СТАТИСТИКА (StreamApi) --");
+        System.out.println("\n --СТАТИСТИКА (StreamApi) Задание #1--");
 
         System.out.printf("Среднее количество посещений в час (люди): %.2f\n",
                 getAverageVisitsPerHour());
@@ -181,6 +312,43 @@ class Statistics {
                 getAverageErrorRequestsPerHour());
         System.out.printf("Средняя посещаемость одним пользователем: %.2f\n",
                 getAverageVisitsPerUser());
+
+        // Методы для задания 2 StreamApi
+        // Вывод статистики для задания #2
+        printStreamAPIStatisticsPart2();
+    }
+
+    //Метод для вывода статистики задания #2 Stream API
+    public void printStreamAPIStatisticsPart2() {
+        System.out.println("\n --СТАТИСТИКА (StreamApi) Задание #2--");
+
+        // 1. Пиковая посещаемость
+        int peakVisits = getPeakVisitsPerSecond();
+        Map.Entry<Long, Integer> peakSecondInfo = getPeakSecondInfo();
+
+        System.out.println("Пиковая посещаемость: " + peakVisits + " запросов/секунду");
+        if (peakSecondInfo != null) {
+            LocalDateTime peakTime = LocalDateTime.ofEpochSecond(peakSecondInfo.getKey(), 0, java.time.ZoneOffset.UTC);
+            System.out.println("  Пиковая секунда: " + peakTime + " (" + peakSecondInfo.getValue() + " запросов)");
+        }
+
+        // 2. Ссылающиеся домены (возвращающий список сайтов, со страниц которых есть ссылки на текущий сайт)
+        List<String> domains = getReferringDomains();
+        System.out.println("Количество ссылающихся доменов: " + domains.size());
+        if (!domains.isEmpty()) {
+            System.out.println("Ссылающиеся домены (первые 10):");
+            domains.stream().limit(10).forEach(domain -> System.out.println("  - " + domain));
+        }
+
+        // 3. Максимальная посещаемость пользователем
+        int maxUserVisits = getMaxVisitsBySingleUser();
+        Map.Entry<String, Integer> mostActiveUser = getMostActiveUserInfo();
+
+        System.out.println("Максимальная посещаемость одним пользователем: " + maxUserVisits + " запросов");
+        if (mostActiveUser != null) {
+            System.out.println("  Самый активный пользователь: IP " + mostActiveUser.getKey() +
+                    " (" + mostActiveUser.getValue() + " запросов)");
+        }
     }
 
     // Дополнительные геттеры для статистики
