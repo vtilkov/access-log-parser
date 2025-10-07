@@ -198,6 +198,11 @@ public class Main {
                         browser, count, share * 100);
             }
 
+            System.out.println("\nКурсовой проект. Задание #1 по теме Stream API");
+
+            //Вывод новой статистики
+            statistics.printStreamAPIStatistics();
+
         } catch (LineTooLongException e) {
             System.out.println("Ошибка: " + e.getMessage());
             System.out.println("Анализ файла прерван из-за слишком длинной строки. ");
